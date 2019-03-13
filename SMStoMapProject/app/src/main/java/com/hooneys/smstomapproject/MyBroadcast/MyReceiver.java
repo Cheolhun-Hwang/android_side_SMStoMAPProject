@@ -21,7 +21,9 @@ import android.support.v4.app.NotificationCompat;
 import android.telephony.SmsMessage;
 import android.util.Log;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.hooneys.smstomapproject.MainActivity;
+import com.hooneys.smstomapproject.MyGEO.GEO;
 import com.hooneys.smstomapproject.R;
 
 import java.text.SimpleDateFormat;
@@ -31,6 +33,9 @@ import java.util.Locale;
 public class MyReceiver extends BroadcastReceiver {
     private final String TAG = MyReceiver.class.getSimpleName();
     private SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyy년 MM월 HH시 mm분 ss초 ", Locale.KOREA);
+    private String[] catchNumbers = {
+        "01048260178", "01011111111"
+    };
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -49,24 +54,43 @@ public class MyReceiver extends BroadcastReceiver {
             String msg = smsMessages[0].getMessageBody();
             Log.i(TAG, "발신 내용 : " + msg);
 
-            String[] parse_one = msg.split("!");
-            String now = parse_one[parse_one.length-1];
+            if(isCatches(receivedNum)){
+                String[] parse_one = msg.split("!");
+                String now = parse_one[parse_one.length-1];
 
-            String before = getBeforeLocation(context);
-            Log.d(TAG, "Before : " + before);
-            Log.d(TAG, "now : " + now);
-            if(before == null){
-                Log.d(TAG, "First Recognition!!");
-                saveLocation(context, now);
-                makePushAlarm(context, now, currentDate);
-            }else{
-                if(!before.equals(now)){
-                    Log.d(TAG, "New Spot!!");
-                    saveLocation(context, now);
-                    makePushAlarm(context, now, currentDate);
+                String before = getBeforeLocation(context);
+                Log.d(TAG, "Before : " + before);
+                Log.d(TAG, "now : " + now);
+
+                if(before == null){
+                    Log.d(TAG, "First Recognition!!");
+                    actToCatchEvent(context, now, currentDate);
+                }else{
+                    if(!before.equals(now)){
+                        Log.d(TAG, "New Spot!!");
+                        actToCatchEvent(context, now, currentDate);
+                    }
                 }
             }
         }
+    }
+
+    private void actToCatchEvent(Context context, String now, String currentDate){
+        saveLocation(context, now, currentDate);
+        LatLng getNowLocation = new GEO().getNameToLatLng(context,now);
+        if(getNowLocation != null){
+            saveLatLng(context, getNowLocation);
+        }
+        makePushAlarm(context, now, currentDate);
+    }
+
+    private boolean isCatches(String sender){
+        for(String num : catchNumbers){
+            if(num.toLowerCase().equals(sender)){
+                return true;
+            }
+        }
+        return false;
     }
 
     private SmsMessage[] getSmsMessages(Bundle bundle){
@@ -84,24 +108,33 @@ public class MyReceiver extends BroadcastReceiver {
         return pref.getString("before_location", null);
     }
 
-    private void saveLocation(Context context, String name){
+    private void saveLocation(Context context, String name, String currentDate){
         SharedPreferences pref = context.getSharedPreferences("pref", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = pref.edit();
         editor.putString("before_location", name);
+        editor.putString("before_date", currentDate);
+        editor.commit();
+    }
+
+    private void saveLatLng(Context context, LatLng latLng){
+        SharedPreferences pref = context.getSharedPreferences("pref", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = pref.edit();
+        editor.putFloat("lat", (float) latLng.latitude);
+        editor.putFloat("lon", (float) latLng.longitude);
         editor.commit();
     }
 
     private void makePushAlarm(Context context, String where, String when){
         NotificationManager manager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        //Android 28 이상
+        //Android 26 이상
         Notification.Builder builder;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             String id = "all_user_channel";
             // 사용자에게 보이는 채널의 이름
-            CharSequence name = context.getString(R.string.channel_name);
+            CharSequence name = context.getString(R.string.channel_name); //"ALL"
             // 사용자에게 보이는 채널의 설명
-            String description = context.getString(R.string.channel_description);
+            String description = context.getString(R.string.channel_description); //"모든 이용자에게"
             int importance = NotificationManager.IMPORTANCE_HIGH;
             NotificationChannel mChannel = new NotificationChannel(id, name, importance);
             // 알림 채널 설정

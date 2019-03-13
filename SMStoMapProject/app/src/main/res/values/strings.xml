@@ -2,4 +2,6 @@
     <string name="app_name">SMStoMapProject</string>
     <string name="channel_name">All</string>
     <string name="channel_description">모든 사용자에게</string>
+
+    <string name="google_map_key">AIzaSyBS89ystkM-nMp78hE6bwyL9AV44Ma5O6o</string>
 </resources>

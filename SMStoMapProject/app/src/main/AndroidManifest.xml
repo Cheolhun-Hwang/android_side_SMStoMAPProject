@@ -2,9 +2,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.hooneys.smstomapproject">
 
+    <!-- Receive SMS -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
+
+    <!-- Send SMS -->
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.WRITE_SMS" />
+
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Map GET GPS Location!! -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
@@ -20,6 +28,21 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <activity
+            android:screenOrientation="portrait"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:name=".LoadingActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:screenOrientation="portrait"
+            android:theme="@style/AppTheme"
+            android:name=".GoogleMapActivity">
+        </activity>
         <!-- 라이브러리 사용 설정 -->
         <uses-library android:name="com.google.android.maps" />
 
@@ -41,17 +64,7 @@
             </intent-filter>
         </receiver>
 
-        <activity android:name=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-
-        <activity android:name=".DaumMapActivity"></activity>
-
+        <activity android:name=".MainActivity"></activity>
     </application>
 
 </manifest>

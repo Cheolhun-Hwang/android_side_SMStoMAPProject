@@ -22,7 +22,9 @@ import android.telephony.SmsMessage;
 import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.hooneys.smstomapproject.GoogleMapActivity;
 import com.hooneys.smstomapproject.MainActivity;
+import com.hooneys.smstomapproject.MyApplication.MyApp;
 import com.hooneys.smstomapproject.MyGEO.GEO;
 import com.hooneys.smstomapproject.R;
 
@@ -33,9 +35,6 @@ import java.util.Locale;
 public class MyReceiver extends BroadcastReceiver {
     private final String TAG = MyReceiver.class.getSimpleName();
     private SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyy년 MM월 HH시 mm분 ss초 ", Locale.KOREA);
-    private String[] catchNumbers = {
-        "01048260178", "01011111111"
-    };
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -57,7 +56,9 @@ public class MyReceiver extends BroadcastReceiver {
             if(isCatches(receivedNum)){
                 String[] parse_one = msg.split("!");
                 String now = parse_one[parse_one.length-1];
-
+                if (parse_one.length < 2 || now.contains("$$")){
+                   return;
+                }
                 String before = getBeforeLocation(context);
                 Log.d(TAG, "Before : " + before);
                 Log.d(TAG, "now : " + now);
@@ -85,7 +86,7 @@ public class MyReceiver extends BroadcastReceiver {
     }
 
     private boolean isCatches(String sender){
-        for(String num : catchNumbers){
+        for(String num : MyApp.catchSMSNumber){
             if(num.toLowerCase().equals(sender)){
                 return true;
             }
@@ -154,7 +155,7 @@ public class MyReceiver extends BroadcastReceiver {
         builder.setContentTitle(where);
         builder.setContentText("[ " + when + " ]");
 
-        Intent intent = new Intent(context, MainActivity.class);
+        Intent intent = new Intent(context, GoogleMapActivity.class);
         TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
         stackBuilder.addNextIntent(intent);
         PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(

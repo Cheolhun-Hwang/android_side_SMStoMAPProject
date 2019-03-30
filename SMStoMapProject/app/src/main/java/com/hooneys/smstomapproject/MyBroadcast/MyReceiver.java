@@ -1,32 +1,31 @@
 package com.hooneys.smstomapproject.MyBroadcast;
 
-import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.RingtoneManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.RequiresApi;
-import android.support.v4.app.NotificationCompat;
 import android.telephony.SmsMessage;
 import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.hooneys.smstomapproject.GoogleMapActivity;
-import com.hooneys.smstomapproject.MainActivity;
 import com.hooneys.smstomapproject.MyApplication.MyApp;
 import com.hooneys.smstomapproject.MyGEO.GEO;
 import com.hooneys.smstomapproject.R;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -34,12 +33,19 @@ import java.util.Locale;
 
 public class MyReceiver extends BroadcastReceiver {
     private final String TAG = MyReceiver.class.getSimpleName();
+    private static final String ACTION_SMS_RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
+    private static final String ACTION_MMS_RECEIVED = "android.provider.Telephony.WAP_PUSH_RECEIVED";
+    private static final String MMS_DATA_TYPE = "application/vnd.wap.mms-message";
     private SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyy년 MM월 HH시 mm분 ss초 ", Locale.KOREA);
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        // TODO: This method is called when the BroadcastReceiver is receiving
-        if (intent.getAction().equals("android.provider.Telephony.SMS_RECEIVED")){
+        String action = intent.getAction();
+        String type = intent.getType();
+
+        Log.d(TAG, "BroadCast : " + action + " / " + type);
+
+        if (intent.getAction().equals(ACTION_SMS_RECEIVED)){
             Bundle bundle = intent.getExtras();
             SmsMessage[] smsMessages = getSmsMessages(bundle);
             //수신 받은 시간
@@ -56,28 +62,79 @@ public class MyReceiver extends BroadcastReceiver {
             if(isCatches(receivedNum)){
                 String[] parse_one = msg.split("!");
                 String now = parse_one[parse_one.length-1];
-                if (parse_one.length < 2 || now.contains("$$")){
-                   return;
+                if (parse_one.length < 5){
+                    return;
                 }
-                String before = getBeforeLocation(context);
-                Log.d(TAG, "Before : " + before);
-                Log.d(TAG, "now : " + now);
-
-                if(before == null){
-                    Log.d(TAG, "First Recognition!!");
-                    actToCatchEvent(context, now, currentDate);
-                }else{
-                    if(!before.equals(now)){
-                        Log.d(TAG, "New Spot!!");
-                        actToCatchEvent(context, now, currentDate);
-                    }
+                try {
+                    matching(context, parse_one[0], parse_one[1], parse_one[2], now, currentDate);
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
             }
         }
     }
 
+    private void matching2(Context context, String msg) {
+        String[] sp_msg = msg.split("\n");
+        Log.d(TAG, sp_msg.toString());
+    }
+
+    private void matching(Context context, String name, String comp, String num, String loc, String date) throws JSONException {
+        if(MyApp.saveMsg.length() < 1){
+            JSONObject object = new JSONObject();
+            object.put("name", name);
+            object.put("company", comp);
+            object.put("send_num", num);
+            object.put("location", loc);
+            object.put("date", date);
+            MyApp.saveMsg.put(object);
+            actToCatchEvent(context, loc, date);
+        }else{
+            for(int index = 0; index < MyApp.saveMsg.length() ; index++){
+                JSONObject object = MyApp.saveMsg.getJSONObject(index);
+                Log.d(TAG, name+"/"+comp+"/"+num);
+                Log.d(TAG, object.getString("name")+"/"+
+                        object.getString("company")+"/"+
+                        object.getString("send_num"));
+                Log.d(TAG, "TF : " + (object.getString("name").equals(name) &&
+                        object.getString("company").equals(comp) &&
+                        object.getString("send_num").equals(num)));
+                if(object.getString("name").equals(name) &&
+                    object.getString("company").equals(comp) &&
+                    object.getString("send_num").equals(num)){
+                    //같은 물품
+                    Log.d(TAG, loc);
+                    Log.d(TAG, object.getString("location"));
+                    Log.d(TAG, "TF : " + !(object.getString("location").equals(loc)));
+                    if(!object.getString("location").equals(loc)){
+                        //다른 위치!!
+                        MyApp.saveMsg.remove(index);
+                        object.put("location", loc);
+                        MyApp.saveMsg.put(object);
+                        actToCatchEvent(context, loc, date);
+                        return;
+                    }else{
+                        //같은 위치!! 였을때
+                        return;
+                    }
+                }
+            }
+
+            //여기서 실행되는건?
+            //다른 물품!!
+            JSONObject object = new JSONObject();
+            object.put("name", name);
+            object.put("company", comp);
+            object.put("send_num", num);
+            object.put("location", loc);
+            object.put("date", date);
+            MyApp.saveMsg.put(object);
+            actToCatchEvent(context, loc, date);
+        }
+    }
+
     private void actToCatchEvent(Context context, String now, String currentDate){
-        saveLocation(context, now, currentDate);
+        saveJson(context);
         LatLng getNowLocation = new GEO().getNameToLatLng(context,now);
         if(getNowLocation != null){
             saveLatLng(context, getNowLocation);
@@ -102,19 +159,6 @@ public class MyReceiver extends BroadcastReceiver {
             smsMessages[index] = SmsMessage.createFromPdu((byte[])Msg[index]);
         }
         return smsMessages;
-    }
-
-    private String getBeforeLocation(Context context){
-        SharedPreferences pref = context.getSharedPreferences("pref", Context.MODE_PRIVATE);
-        return pref.getString("before_location", null);
-    }
-
-    private void saveLocation(Context context, String name, String currentDate){
-        SharedPreferences pref = context.getSharedPreferences("pref", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = pref.edit();
-        editor.putString("before_location", name);
-        editor.putString("before_date", currentDate);
-        editor.commit();
     }
 
     private void saveLatLng(Context context, LatLng latLng){
@@ -168,5 +212,23 @@ public class MyReceiver extends BroadcastReceiver {
         builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
 
         manager.notify(1, builder.build());
+    }
+
+    private void saveJson(Context context){
+        /*
+        [
+            {
+                name : '이**',
+                company : 'LGT',
+                send_num : '01960',
+                location : '서울시 송파구 문정동 678',
+                date : '2019-02-11 22:02:11'
+            },....
+        ]
+        * */
+        SharedPreferences pref = context.getSharedPreferences("pref", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = pref.edit();
+        editor.putString("save_msg", MyApp.saveMsg.toString());
+        editor.commit();
     }
 }

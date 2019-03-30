@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".AddNumberActivity">
+    <EditText
+        android:background="@color/white"
+        android:id="@+id/add_num_save_text"
+        android:gravity="center"
+        android:hint="add number : 00000000000, ..."
+        android:inputType="text"
+        android:layout_marginBottom="40dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+    <Button
+        android:layout_alignParentBottom="true"
+        android:id="@+id/add_num_save_btn"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:text="save"
+        android:background="@color/colorPrimary"
+        android:layout_width="match_parent"
+        android:layout_height="40dp" />
+</RelativeLayout>

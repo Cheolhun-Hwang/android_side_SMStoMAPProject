@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/add_catch_num"
+        android:icon="@drawable/ic_add_black_24dp"
+        android:title="add catch number"
+        />
+    <item
+        android:id="@+id/add_send_num"
+        android:icon="@drawable/ic_add_black_24dp"
+        android:title="add send number"
+        />
+</menu>

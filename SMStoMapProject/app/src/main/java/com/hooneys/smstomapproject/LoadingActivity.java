@@ -52,12 +52,12 @@ public class LoadingActivity extends AppCompatActivity {
     protected void onStart(){
         super.onStart();
 
-        if(!permission.checkPermission()) {
-            //No Permission
-            permission.commitPermission(SIG_PERMISSION);
-        }else{
-            //All Permission
+        if(permission.checkPermission()){
+            //All permission
             startThread();
+        }else{
+            //No ALL permission
+            permission.commitPermission(SIG_PERMISSION);
         }
     }
 
@@ -78,8 +78,9 @@ public class LoadingActivity extends AppCompatActivity {
             public void run() {
                 Message msg = myHandler.obtainMessage();
                 try {
-                    MyApp.initCatchSMSNumber();
-                    MyApp.initSendSMSNumber();
+                    MyApp.initCatchSMSNumber(getApplicationContext());
+                    MyApp.initSendSMSNumber(getApplicationContext());
+                    MyApp.loadSaveMsg(getApplicationContext());
 
                     Thread.sleep(2000);
                     msg.what = 101;
@@ -101,6 +102,8 @@ public class LoadingActivity extends AppCompatActivity {
         }
     }
 
+
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 //        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -114,13 +117,15 @@ public class LoadingActivity extends AppCompatActivity {
             }
 
             if(isALL){
+                //All Permission
                 startThread();
             }else{
-                Toast.makeText(getApplicationContext(), "모든 권한이 필요합니다.", Toast.LENGTH_SHORT).show();
+                //No All permission
+                Toast.makeText(getApplicationContext(), "모든 권한이 필요합니다.",
+                        Toast.LENGTH_SHORT).show();
                 permission.commitPermission(SIG_PERMISSION);
             }
 
         }
-
     }
 }

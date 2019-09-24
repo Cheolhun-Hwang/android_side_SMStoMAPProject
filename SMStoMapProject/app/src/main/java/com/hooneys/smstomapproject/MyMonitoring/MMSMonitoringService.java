@@ -4,8 +4,9 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.app.TaskStackBuilder;
+import android.app.job.JobParameters;
+import android.app.job.JobService;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -13,9 +14,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
-import android.os.IBinder;
-import android.os.storage.StorageManager;
 import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -25,39 +25,24 @@ import com.hooneys.smstomapproject.MyGEO.GEO;
 import com.hooneys.smstomapproject.MyRooms.Do.Catch;
 import com.hooneys.smstomapproject.R;
 
-import java.util.ArrayList;
-
-public class MMSService extends Service {
-    private final String TAG = MMSService.class.getSimpleName();
-    private final int TIME_CHECK = 10 * 1000 * 1 ; //ms
+public class MMSMonitoringService extends JobService {
+    private final String TAG = MMSMonitoringService.class.getSimpleName();
     private final String COMPANY_NAME = "가천대학교산학협력관";
     private final String COMPANY_PHONE = "031-750-4615";
     private final String SEND_NAME = "대표자";
-    private boolean isRun;
-    private int beforeLength;
-    private Thread mms_monitoring;
+    private PollTask mCurrentTask;
 
-    public MMSService() {
-        beforeLength = -1;
-        isRun = true;
+    @Override
+    public boolean onStartJob(JobParameters params) {
+        Log.i(TAG, "Job Start....");
+        mCurrentTask = new PollTask();
+        mCurrentTask.execute(params);
+        return true;
+    }
 
-        Log.d(TAG, "MMS Service Start...");
-        mms_monitoring = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                   if(isRun){
-                       Log.d(TAG, "Monitoring start...");
-                       startMonitoring();
-                       Thread.sleep(TIME_CHECK);
-                   }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        mms_monitoring.start();
-
+    @Override
+    public boolean onStopJob(JobParameters params) {
+        return true;
     }
 
     private void startMonitoring() {
@@ -94,6 +79,7 @@ public class MMSService extends Service {
             }
             Log.d(TAG, "MMS List : " + mmsId + " / " + date + " / " + mmsType + " / " + messageBody);
             if(messageBody.contains("[발신기지국]") && messageBody.contains("[위치자료]")){
+                Log.d(TAG, "MMS Catching!");
                 String[] sp_msg = messageBody.split("\n");
                 Log.d(TAG, sp_msg[6]);  //위치정보
                 if(MyApp.catches.size() < 1){
@@ -113,8 +99,8 @@ public class MMSService extends Service {
                 }else{
                     for(Catch cat : MyApp.catches){
                         if(cat.getName().equals(SEND_NAME) &&
-                            cat.getCompany().equals(COMPANY_NAME) &&
-                            cat.getPhone().equals(COMPANY_PHONE)) {
+                                cat.getCompany().equals(COMPANY_NAME) &&
+                                cat.getPhone().equals(COMPANY_PHONE)) {
                             if(!cat.getLocation().equals(sp_msg[6])){
                                 //수정
                                 LatLng latLng = new GEO().getNameToLatLng(MyApp.instatnceActivity, sp_msg[6]);
@@ -146,14 +132,6 @@ public class MMSService extends Service {
         query.close();
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        // Service 객체와 (화면단 Activity 사이에서)
-        // 통신(데이터를 주고받을) 때 사용하는 메서드
-        // 데이터를 전달할 필요가 없으면 return null;
-        return null;
-    }
-
     private void makePushAlarm(String where, String when){
         NotificationManager manager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
 
@@ -175,17 +153,17 @@ public class MMSService extends Service {
             mChannel.enableVibration(true);
             mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
             manager.createNotificationChannel(mChannel);
-            builder = new Notification.Builder(MMSService.this, mChannel.getId());
+            builder = new Notification.Builder(MMSMonitoringService.this, mChannel.getId());
         }else{
-            builder = new Notification.Builder(MMSService.this);
+            builder = new Notification.Builder(MMSMonitoringService.this);
         }
         builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_map_black_24dp));
         builder.setSmallIcon(R.drawable.ic_map_black_24dp);
         builder.setContentTitle(where);
         builder.setContentText("[ " + when + " ]");
 
-        Intent intent = new Intent(MMSService.this, GoogleMapActivity.class);
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(MMSService.this);
+        Intent intent = new Intent(MMSMonitoringService.this, GoogleMapActivity.class);
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(MMSMonitoringService.this);
         stackBuilder.addNextIntent(intent);
         PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(
                 0, PendingIntent.FLAG_UPDATE_CURRENT
@@ -199,12 +177,15 @@ public class MMSService extends Service {
         manager.notify(1, builder.build());
     }
 
-    @Override
-    public void onDestroy() {
-        synchronized (MMSService.this){
-            this.isRun = false;
+    private class PollTask extends AsyncTask<JobParameters, Void, Void> {
+        @Override
+        public Void doInBackground(JobParameters... params) {
+            JobParameters jobParams = params[0];
+            Log.i(TAG, "Job execute...");
+            startMonitoring();
+            jobFinished(jobParams, false);
+            return null;
         }
-
-        super.onDestroy();
     }
+
 }

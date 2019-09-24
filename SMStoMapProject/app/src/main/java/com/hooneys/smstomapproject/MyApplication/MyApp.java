@@ -1,20 +1,14 @@
 package com.hooneys.smstomapproject.MyApplication;
 
-import android.app.Activity;
 import android.app.Application;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.support.v4.app.FragmentActivity;
 
-import com.hooneys.smstomapproject.MyMonitoring.MMSDO;
 import com.hooneys.smstomapproject.MyRooms.Do.Catch;
-import com.hooneys.smstomapproject.MyRooms.Do.Send;
 import com.hooneys.smstomapproject.MyRooms.ViewModels.CatchViewModel;
 import com.hooneys.smstomapproject.MyRooms.ViewModels.SendViewModel;
-
-import org.json.JSONArray;
-import org.json.JSONException;
 
 import java.util.ArrayList;
 import java.util.List;

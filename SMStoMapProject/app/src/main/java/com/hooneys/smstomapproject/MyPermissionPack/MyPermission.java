@@ -13,7 +13,8 @@ public class MyPermission {
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.INTERNET,
             Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.RECEIVE_BOOT_COMPLETED
     };
 
     private Activity activity;

@@ -1,10 +1,13 @@
 package com.hooneys.smstomapproject;
 
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
 import android.arch.lifecycle.Observer;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.os.Build;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.ActionBar;
@@ -12,11 +15,12 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.telephony.SmsManager;
+import android.text.format.DateUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -26,20 +30,17 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.hooneys.smstomapproject.MyApplication.MyApp;
-import com.hooneys.smstomapproject.MyGEO.GEO;
-import com.hooneys.smstomapproject.MyMonitoring.MMSDO;
+import com.hooneys.smstomapproject.MyMonitoring.MMSMonitoringService;
 import com.hooneys.smstomapproject.MyMonitoring.MMSService;
 import com.hooneys.smstomapproject.MyPermissionPack.MyPermission;
 import com.hooneys.smstomapproject.MyRooms.Do.Catch;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.List;
 
 public class GoogleMapActivity extends AppCompatActivity {
     private final String TAG = GoogleMapActivity.class.getSimpleName();
     private final int INIT_ZOOM = 14;
+    private final int JOB_ID = 1;
 
     private FloatingActionButton floatingActionButton;
     private SupportMapFragment maps;
@@ -63,7 +64,34 @@ public class GoogleMapActivity extends AppCompatActivity {
     }
 
     private void initService() {
-        startService(new Intent(getApplicationContext(), MMSService.class)); // 서비스 시작
+//        startService(new Intent(getApplicationContext(), MMSService.class)); // 서비스 시작
+        JobScheduler scheduler = (JobScheduler)getSystemService(Context.JOB_SCHEDULER_SERVICE);
+        JobInfo jobInfo = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            jobInfo = new JobInfo.Builder(JOB_ID, new ComponentName(this, MMSMonitoringService.class))
+                    .setMinimumLatency(DateUtils.MINUTE_IN_MILLIS)
+                    .setPersisted(true) //재부팅해도 지속유지
+                    .build();
+        } else {
+            jobInfo = new JobInfo.Builder(JOB_ID, new ComponentName(this, MMSMonitoringService.class))
+                    .setPeriodic(DateUtils.MINUTE_IN_MILLIS)
+                    .setPersisted(true) //재부팅해도 지속유지
+                    .build();
+        }
+        int result_code = scheduler.schedule(jobInfo);
+        if(result_code == JobScheduler.RESULT_SUCCESS){
+            Log.d(TAG, "MMS Job Success");
+        }else{
+            Log.d(TAG, "MMS Job Fail...");
+        }
+
+//        Job 스캐줄 확인
+//        boolean hasBeenScheduled = false;
+//        for (JobInfo jobInf : scheduler.getAllPendingJobs()) {
+//            if (jobInf.getId() == JOB_ID) {
+//                hasBeenScheduled  = true;
+//            }
+//        }
     }
 
     private void addingMarkers(List<Catch> catches) {

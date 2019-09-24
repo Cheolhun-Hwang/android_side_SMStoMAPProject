@@ -22,6 +22,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.hooneys.smstomapproject.GoogleMapActivity;
 import com.hooneys.smstomapproject.MyApplication.MyApp;
 import com.hooneys.smstomapproject.MyGEO.GEO;
+import com.hooneys.smstomapproject.MyRooms.Do.Catch;
 import com.hooneys.smstomapproject.R;
 
 import java.util.ArrayList;
@@ -29,6 +30,9 @@ import java.util.ArrayList;
 public class MMSService extends Service {
     private final String TAG = MMSService.class.getSimpleName();
     private final int TIME_CHECK = 60 * 1000 * 1 ; //ms
+    private final String COMPANY_NAME = "가천대학교산학협력관";
+    private final String COMPANY_PHONE = "031-750-4615";
+    private final String SEND_NAME = "대표자";
     private boolean isRun;
     private int beforeLength;
     private Thread mms_monitoring;
@@ -36,7 +40,6 @@ public class MMSService extends Service {
     public MMSService() {
         beforeLength = -1;
         isRun = true;
-        MyApp.mmsMsg = new ArrayList<>();
 
         Log.d(TAG, "MMS Service Start...");
         mms_monitoring = new Thread(new Runnable() {
@@ -80,10 +83,8 @@ public class MMSService extends Service {
                         if ("text/plain".equals(type)) {
                             String data = cur.getString(cur.getColumnIndex("_data"));
                             if (data != null) {
-                                // implementation of this method below
                                 messageBody = "None";
-                            }
-                            else {
+                            }else {
                                 messageBody = cur.getString(cur.getColumnIndex("text"));
                             }
                         }
@@ -92,39 +93,54 @@ public class MMSService extends Service {
                 }
             }
 //            Log.d(TAG, "MMS List : " + mmsId + " / " + date + " / " + mmsType + " / " + messageBody);
-            if(messageBody.contains("[보내는이]") && messageBody.contains("[위치자료]")){
+            if(messageBody.contains("[발신기지국]") && messageBody.contains("[위치자료]")){
                 String[] sp_msg = messageBody.split("\n");
-                Log.d(TAG, sp_msg[3]+"/"+sp_msg[6]);
-                for(int index = 0;index<MyApp.mmsMsg.size();index++){
-                    if(MyApp.mmsMsg.get(index).getDepart().equals(sp_msg[3])){
-                        if(!MyApp.mmsMsg.get(index).getLocation().equals(sp_msg[6])){
-                            //같은 곳에서 보냈지만 다를때
-                            Log.d(TAG, "MMS ADDing");
-                            MyApp.mmsMsg.get(index).setLocation(sp_msg[6]);
-                            LatLng latLng = new GEO().getNameToLatLng(MMSService.this, sp_msg[6]);
-                            Log.d(TAG, "GPS : " + latLng.latitude + " / " + latLng.longitude);
-                            MyApp.mmsMsg.get(index).setLatLng(latLng);
-
-                            makePushAlarm(sp_msg[6], sp_msg[3]);
-                            return;
-                        }else{
-                            //같은 곳에서 보냈지만 같을때
+                Log.d(TAG, sp_msg[6]);  //위치정보
+                if(MyApp.catches.size() < 1){
+                    //추가
+                    Catch cat = new Catch();
+                    cat.setCompany(COMPANY_NAME);
+                    cat.setDate(date);
+                    LatLng latLng = new GEO().getNameToLatLng(MyApp.instatnceActivity, sp_msg[6]);
+                    cat.setLocation(sp_msg[6]);
+                    cat.setLat(latLng.latitude);
+                    cat.setLon(latLng.longitude);
+                    cat.setPhone(COMPANY_PHONE);
+                    cat.setName(SEND_NAME);
+                    MyApp.catchViewModel.insert(cat);
+                    makePushAlarm(sp_msg[6], date);
+                    return;
+                }else{
+                    for(Catch cat : MyApp.catches){
+                        if(cat.getName().equals(SEND_NAME) &&
+                            cat.getCompany().equals(COMPANY_NAME) &&
+                            cat.getPhone().equals(COMPANY_PHONE)) {
+                            if(!cat.getLocation().equals(sp_msg[6])){
+                                //수정
+                                LatLng latLng = new GEO().getNameToLatLng(MyApp.instatnceActivity, sp_msg[6]);
+                                cat.setLocation(sp_msg[6]);
+                                cat.setLat(latLng.latitude);
+                                cat.setLon(latLng.longitude);
+                                MyApp.catchViewModel.update(cat);
+                                makePushAlarm(sp_msg[6], date);
+                            }
                             return;
                         }
                     }
+                    //추가
+                    Catch cat = new Catch();
+                    cat.setCompany(COMPANY_NAME);
+                    cat.setDate(date);
+                    LatLng latLng = new GEO().getNameToLatLng(MyApp.instatnceActivity, sp_msg[6]);
+                    cat.setLocation(sp_msg[6]);
+                    cat.setLat(latLng.latitude);
+                    cat.setLon(latLng.longitude);
+                    cat.setPhone(COMPANY_PHONE);
+                    cat.setName(SEND_NAME);
+                    MyApp.catchViewModel.insert(cat);
+                    makePushAlarm(sp_msg[6], date);
+                    return;
                 }
-                //등록되지 않았을때
-                Log.d(TAG, "MMS ADDing");
-                LatLng latLng = new GEO().getNameToLatLng(MMSService.this, sp_msg[6]);
-                Log.d(TAG, "GPS : " + latLng.latitude + " / " + latLng.longitude);
-
-                MyApp.mmsMsg.add(new MMSDO(
-                        sp_msg[3],
-                        latLng,
-                        sp_msg[6]
-                ));
-
-                makePushAlarm(sp_msg[6], sp_msg[3]);
             }
         }
         query.close();

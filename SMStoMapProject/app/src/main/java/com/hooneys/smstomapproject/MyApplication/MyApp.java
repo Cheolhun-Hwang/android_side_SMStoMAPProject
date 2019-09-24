@@ -1,21 +1,41 @@
 package com.hooneys.smstomapproject.MyApplication;
 
+import android.app.Activity;
 import android.app.Application;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.support.v4.app.FragmentActivity;
 
 import com.hooneys.smstomapproject.MyMonitoring.MMSDO;
+import com.hooneys.smstomapproject.MyRooms.Do.Catch;
+import com.hooneys.smstomapproject.MyRooms.Do.Send;
+import com.hooneys.smstomapproject.MyRooms.ViewModels.CatchViewModel;
+import com.hooneys.smstomapproject.MyRooms.ViewModels.SendViewModel;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MyApp extends Application {
     public static ArrayList<String> catchSMSNumber;
     public static ArrayList<String> sendSMSNumber;
-    public static JSONArray saveMsg;
-    public static ArrayList<MMSDO> mmsMsg;
+
+    public static FragmentActivity instatnceActivity;
+    public static CatchViewModel catchViewModel;
+    public static SendViewModel sendViewModel;
+    public static List<Catch> catches;
+
+    public static void initCatchViewModel(FragmentActivity instance){
+        catchViewModel = ViewModelProviders.of(instance).get(CatchViewModel.class);
+    }
+
+    public static void initSendViewModel(FragmentActivity instance){
+        sendViewModel = ViewModelProviders.of(instance).get(SendViewModel.class);
+    }
+
 
     public static void initCatchSMSNumber(Context context){
         catchSMSNumber = new ArrayList<>();
@@ -58,57 +78,4 @@ public class MyApp extends Application {
             }
         }
     }
-
-    public static void loadSaveMsg(Context context) {
-        SharedPreferences pref = context.getSharedPreferences("pref", MODE_PRIVATE);
-        String res = pref.getString("save_msg", null);
-        if(res != null){
-            try {
-                saveMsg = new JSONArray(res);
-            } catch (JSONException e) {
-                e.printStackTrace();
-                saveMsg = new JSONArray();
-            }
-        }else{
-            saveMsg = new JSONArray();
-        }
-    }
-
-
-//    public static void reloadCatchSMSNumber(Context context){
-//        catchSMSNumber.clear();
-//        loadCatchSMSNumber(context);
-//    }
-//
-//    private static void loadCatchSMSNumber(Context context){
-//        SharedPreferences pref = context.getSharedPreferences("pref", MODE_PRIVATE);
-//        String numbers = pref.getString("catch_num", "");
-//        if (!numbers.equals("")){
-//            String[] sp_num = numbers.split(",");
-//            for (String num : sp_num){
-//                catchSMSNumber.add(num);
-//            }
-//        }
-//    }
-//
-//    private static void loadSendSMSNumber(Context context){
-//        SharedPreferences pref = context.getSharedPreferences("pref", MODE_PRIVATE);
-//        String numbers = pref.getString("send_num", "");
-//        if (!numbers.equals("")){
-//            String[] sp_num = numbers.split(",");
-//            for (String num : sp_num){
-//                sendSMSNumber.add(num);
-//            }
-//        }
-//    }
-//
-//    public static void initSendSMSNumber(Context context){
-//        sendSMSNumber = new ArrayList<>();
-//        loadSendSMSNumber(context);
-//    }
-//
-//    public static void reloadSendSMSNumber(Context context){
-//        sendSMSNumber.clear();
-//        loadSendSMSNumber(context);
-//    }
 }

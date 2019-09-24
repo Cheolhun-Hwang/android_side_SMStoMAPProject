@@ -80,7 +80,6 @@ public class LoadingActivity extends AppCompatActivity {
                 try {
                     MyApp.initCatchSMSNumber(getApplicationContext());
                     MyApp.initSendSMSNumber(getApplicationContext());
-                    MyApp.loadSaveMsg(getApplicationContext());
 
                     Thread.sleep(2000);
                     msg.what = 101;

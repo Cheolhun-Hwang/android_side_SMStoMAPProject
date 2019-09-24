@@ -1,9 +1,11 @@
 package com.hooneys.smstomapproject;
 
+import android.arch.lifecycle.Observer;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
@@ -28,9 +30,12 @@ import com.hooneys.smstomapproject.MyGEO.GEO;
 import com.hooneys.smstomapproject.MyMonitoring.MMSDO;
 import com.hooneys.smstomapproject.MyMonitoring.MMSService;
 import com.hooneys.smstomapproject.MyPermissionPack.MyPermission;
+import com.hooneys.smstomapproject.MyRooms.Do.Catch;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.List;
 
 public class GoogleMapActivity extends AppCompatActivity {
     private final String TAG = GoogleMapActivity.class.getSimpleName();
@@ -38,6 +43,7 @@ public class GoogleMapActivity extends AppCompatActivity {
 
     private FloatingActionButton floatingActionButton;
     private SupportMapFragment maps;
+    private GoogleMap mapHandler;
     private OnMapReadyCallback readyCallback;
     private boolean isSend;
     private MyPermission permission;
@@ -48,8 +54,60 @@ public class GoogleMapActivity extends AppCompatActivity {
         setContentView(R.layout.activity_google_map);
 
         setAppBar(getSupportActionBar());
+
+        applicationInit();
         init();
+        initService();
+
         setEvent();
+    }
+
+    private void initService() {
+        startService(new Intent(getApplicationContext(), MMSService.class)); // 서비스 시작
+    }
+
+    private void addingMarkers(List<Catch> catches) {
+        mapHandler.clear();
+
+        if(catches.size() < 1){
+            mapHandler.addMarker(new MarkerOptions()
+                    .position(new LatLng(37.450626, 127.128847))
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE))
+                    .snippet("[default]")
+                    .title("가천대학교")
+                    .zIndex((float) 1));
+            mapHandler.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                    new LatLng(37.450626, 127.128847), INIT_ZOOM));
+            return;
+        }
+
+        LatLng point = null;
+        for(Catch cat : catches){
+            point = new LatLng(cat.getLat(), cat.getLon());
+            mapHandler.addMarker(new MarkerOptions()
+                    .position(point)
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE))
+                    .snippet(cat.getCompany())
+                    .title(cat.getLocation()));
+        }
+        mapHandler.moveCamera(CameraUpdateFactory.newLatLngZoom(point, INIT_ZOOM));
+    }
+
+    private void applicationInit() {
+        MyApp.instatnceActivity = GoogleMapActivity.this;
+        MyApp.initSendViewModel(GoogleMapActivity.this);
+        MyApp.initCatchViewModel(GoogleMapActivity.this);
+
+        MyApp.catchViewModel.getAllCatehs().observe(MyApp.instatnceActivity,
+                new Observer<List<Catch>>() {
+                    @Override
+                    public void onChanged(@Nullable List<Catch> catches) {
+                        MyApp.catches = catches;
+                        if(mapHandler != null && catches != null){
+                            addingMarkers(catches);
+                        }
+                    }
+                });
     }
 
     private void setAppBar(ActionBar bar){
@@ -71,7 +129,7 @@ public class GoogleMapActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-//        stopService(new Intent(getApplicationContext(), MMSService.class)); // 서비스 시작
+//        stopService(new Intent(getApplicationContext(), MMSService.class));
 
         super.onDestroy();
     }
@@ -80,58 +138,21 @@ public class GoogleMapActivity extends AppCompatActivity {
         isSend = false;
         permission = new MyPermission(GoogleMapActivity.this);
 
-        startService(new Intent(getApplicationContext(), MMSService.class)); // 서비스 시작
-
         maps = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.google_map);
         floatingActionButton = (FloatingActionButton) findViewById(R.id.send_sms);
         readyCallback = new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
-                googleMap.getUiSettings().setScrollGesturesEnabled(true);
-                googleMap.getUiSettings().setZoomGesturesEnabled(true);
-                googleMap.getUiSettings().setZoomControlsEnabled(true);
-                googleMap.getUiSettings().setCompassEnabled(true);
+                mapHandler = googleMap;
 
-                if(MyApp.saveMsg.length() < 1){
-                    googleMap.addMarker(new MarkerOptions()
-                            .position(new LatLng(37.450626, 127.128847))
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE))
-                            .snippet("[default]")
-                            .title("가천대학교")
-                            .zIndex((float) 1));
+                mapHandler.getUiSettings().setScrollGesturesEnabled(true);
+                mapHandler.getUiSettings().setZoomGesturesEnabled(true);
+                mapHandler.getUiSettings().setZoomControlsEnabled(true);
+                mapHandler.getUiSettings().setCompassEnabled(true);
 
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(37.450626, 127.128847), INIT_ZOOM));
-                }else{
-                    LatLng lastLatLng = null;
-                    for(int i = 0;i<MyApp.saveMsg.length(); i++){
-                        try {
-                            JSONObject object = MyApp.saveMsg.getJSONObject(i);
-
-                            LatLng latLng = new GEO().getNameToLatLng(getApplicationContext(), object.getString("location"));
-                            if(i == MyApp.saveMsg.length()-1){
-                                lastLatLng = latLng;
-                            }
-
-                            googleMap.addMarker(new MarkerOptions()
-                                    .position(latLng)
-                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET))
-                                    .snippet("[" + object.getString("date") + "]")
-                                    .title(object.getString("location"))
-                                    .zIndex((float) 1));
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    for(int i = 0;i<MyApp.mmsMsg.size(); i++){
-                        googleMap.addMarker(new MarkerOptions()
-                                .position(MyApp.mmsMsg.get(i).getLatLng())
-                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE))
-                                .snippet("[" + MyApp.mmsMsg.get(i).getDepart() + "]")
-                                .title(MyApp.mmsMsg.get(i).getLocation())
-                                .zIndex((float) 1));
-                    }
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(lastLatLng, INIT_ZOOM));
+                // 20190924 추가수정
+                if(MyApp.catches != null){
+                    addingMarkers(MyApp.catches);
                 }
             }
         };
@@ -152,13 +173,13 @@ public class GoogleMapActivity extends AppCompatActivity {
     private void sendSMS(){
         String msg = "";
         try{
-            JSONObject object = MyApp.saveMsg.getJSONObject(MyApp.saveMsg.length()-1);
+            Catch item = MyApp.catches.get(MyApp.catches.size()-1);
             for(String num : MyApp.sendSMSNumber){
                 SmsManager.getDefault().sendTextMessage(num,
                         null,
-                        object.getString("name")+ "!"+object.getString("company")+"!"+
-                                object.getString("send_num")+"!!!" + object.getString("date") +
-                                "!!!" + object.getString("location"),
+                        item.getName()+ "!"+item.getCompany()+"!"+
+                                item.getSendNum()+"!!!" + item.getDate() +
+                                "!!!" + item.getLocation(),
                         null,
                         null);
             }
@@ -184,16 +205,12 @@ public class GoogleMapActivity extends AppCompatActivity {
         alert.show();
     }
 
-
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_menu,menu);
         return true;
     }
-
-
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -213,6 +230,4 @@ public class GoogleMapActivity extends AppCompatActivity {
         intent.putExtra("type", type);
         startActivity(intent);
     }
-
-
 }

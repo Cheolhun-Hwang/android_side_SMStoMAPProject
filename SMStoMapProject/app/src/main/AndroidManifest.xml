@@ -48,10 +48,12 @@
             </intent-filter>
         </activity>
         <activity
+            android:launchMode="singleTop"
             android:name=".GoogleMapActivity"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme" />
         <activity
+            android:parentActivityName=".GoogleMapActivity"
             android:name=".AddNumberActivity"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />

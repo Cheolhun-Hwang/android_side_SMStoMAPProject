@@ -129,15 +129,4 @@ public class AddNumberActivity extends AppCompatActivity {
         });
         alert.show();
     }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()){
-            case R.id.home:
-                finish();
-                break;
-        }
-
-        return true;
-    }
 }

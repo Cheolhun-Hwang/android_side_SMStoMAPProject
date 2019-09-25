@@ -27,14 +27,19 @@ import com.hooneys.smstomapproject.R;
 
 public class MMSMonitoringService extends JobService {
     private final String TAG = MMSMonitoringService.class.getSimpleName();
+    public static boolean makePush = false;
     private final String COMPANY_NAME = "가천대학교산학협력관";
     private final String COMPANY_PHONE = "031-750-4615";
     private final String SEND_NAME = "대표자";
     private PollTask mCurrentTask;
+    private String pushBody;
+    private String pushDate;
 
     @Override
     public boolean onStartJob(JobParameters params) {
         Log.i(TAG, "Job Start....");
+        pushBody = "";
+        pushDate = "";
         mCurrentTask = new PollTask();
         mCurrentTask.execute(params);
         return true;
@@ -94,7 +99,9 @@ public class MMSMonitoringService extends JobService {
                     cat.setPhone(COMPANY_PHONE);
                     cat.setName(SEND_NAME);
                     MyApp.catchViewModel.insert(cat);
-                    makePushAlarm(sp_msg[6], date);
+                    pushBody = sp_msg[6];
+                    pushDate = date;
+                    makePush = true;
                     return;
                 }else{
                     for(Catch cat : MyApp.catches){
@@ -108,7 +115,9 @@ public class MMSMonitoringService extends JobService {
                                 cat.setLat(latLng.latitude);
                                 cat.setLon(latLng.longitude);
                                 MyApp.catchViewModel.update(cat);
-                                makePushAlarm(sp_msg[6], date);
+                                pushBody = sp_msg[6];
+                                pushDate = date;
+                                makePush = true;
                             }
                             return;
                         }
@@ -124,7 +133,9 @@ public class MMSMonitoringService extends JobService {
                     cat.setPhone(COMPANY_PHONE);
                     cat.setName(SEND_NAME);
                     MyApp.catchViewModel.insert(cat);
-                    makePushAlarm(sp_msg[6], date);
+                    makePush = true;
+                    pushBody = sp_msg[6];
+                    pushDate = date;
                     return;
                 }
             }
@@ -181,10 +192,19 @@ public class MMSMonitoringService extends JobService {
         @Override
         public Void doInBackground(JobParameters... params) {
             JobParameters jobParams = params[0];
+            makePush = false;
             Log.i(TAG, "Job execute...");
             startMonitoring();
             jobFinished(jobParams, false);
             return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            if(makePush){
+                makePushAlarm(pushBody, pushDate);
+            }
         }
     }
 

@@ -178,7 +178,6 @@ public class GoogleMapActivity extends AppCompatActivity {
                 mapHandler.getUiSettings().setZoomControlsEnabled(true);
                 mapHandler.getUiSettings().setCompassEnabled(true);
 
-                // 20190924 추가수정
                 if(MyApp.catches != null){
                     addingMarkers(MyApp.catches);
                 }
